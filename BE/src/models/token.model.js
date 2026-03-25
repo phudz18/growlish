@@ -1,10 +1,13 @@
 const pool = require('../config/db');
 
 const Token = {
-    saveRefreshToken: async (userId, tokenHash, expiresAt) => {
+    saveRefreshToken: async (userId, tokenHash, device, ip, expiresAt) => {
+
         await pool.query(
-            'INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
-            [userId, tokenHash, expiresAt]
+            `INSERT INTO refresh_tokens
+            (user_id, token_hash, device_info, ip_address, expires_at)
+            VALUES (?, ?, ?, ?, ?)`,
+            [userId, tokenHash, device, ip, expiresAt]
         );
     },
 

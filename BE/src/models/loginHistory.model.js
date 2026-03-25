@@ -1,10 +1,11 @@
 const pool = require('../config/db');
 
 const LoginHistory = {
-    create: async ({ userId, ipAddress, userAgent, isSuccess }) => {
+    create: async (userId, ip, device, status) => {
+
         await pool.query(
-            'INSERT INTO login_history (user_id, ip_address, user_agent, is_success) VALUES (?, ?, ?, ?)',
-            [userId, ipAddress, userAgent, isSuccess ? 1 : 0]
+            `INSERT INTO login_history (user_id, ip_address, device_info, login_status) VALUES (?, ?, ?, ?)`,
+            [userId, ip, device, status]
         );
     },
 

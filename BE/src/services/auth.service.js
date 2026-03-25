@@ -18,7 +18,7 @@ const MAX_FAILED_LOGIN_ATTEMPTS = parseInt(process.env.MAX_FAILED_LOGIN_ATTEMPTS
 const hashToken = (token) =>
     crypto.createHash('sha256').update(token).digest('hex');
 
-const generateTokens = async (user) => {
+const generateTokens = async (user, device = 'unknown', ip = 'unknown') => {
     const payload = {
         sub: user.user_id,
         email: user.email
@@ -40,7 +40,7 @@ const generateTokens = async (user) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRES_DAYS);
 
-    await Token.saveRefreshToken(user.user_id, tokenHash, expiresAt);
+    await Token.saveRefreshToken(user.user_id, tokenHash, device, ip, expiresAt);
 
     return { accessToken, refreshToken };
 };
@@ -60,7 +60,7 @@ const AuthService = {
         try {
             await connection.beginTransaction();
 
-            const userId = await User.create(
+            const userId = await User.createUser(
                 {
                     username,
                     email,
@@ -140,7 +140,7 @@ const AuthService = {
 
         await User.updateLastLogin(user.user_id);
 
-        const tokens = await generateTokens(user);
+        const tokens = await generateTokens(user, userAgent, ipAddress);
         const roles = await Role.getRolesForUser(user.user_id);
 
         return {
@@ -154,7 +154,7 @@ const AuthService = {
         };
     },
 
-    refreshTokens: async (refreshToken) => {
+    refreshTokens: async (refreshToken,  ipAddress = 'unknown', userAgent = 'unknown') => {
         if (!refreshToken) {
             const error = new Error('Missing refresh token');
             error.statusCode = 400;
@@ -178,8 +178,7 @@ const AuthService = {
             throw error;
         }
 
-        const [rows] = await pool.query('SELECT * FROM users WHERE user_id = ?', [payload.sub]);
-        const user = rows[0];
+        const user = await User.findById(payload.sub);
         if (!user) {
             const error = new Error('User not found');
             error.statusCode = 404;
@@ -213,13 +212,10 @@ const AuthService = {
     },
 
     loginWithOAuthProfile: async ({ provider, providerUserId, email, username, accessToken, refreshToken }) => {
-        let user = null;
+        let user = await User.findByEmail(email);
 
-        const rows = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
-        const existingUser = rows[0][0];
-
-        if (existingUser) {
-            user = existingUser;
+        if (user) {
+           
         } else {
             const connection = await pool.getConnection();
             try {

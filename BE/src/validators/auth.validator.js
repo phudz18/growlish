@@ -10,7 +10,7 @@ const registerValidator = validate([
     { field: 'email', required: true, type: 'email' },
     {
         field: 'password',
-        required: true,
+        required: false,
         minLength: 8,
         pattern: strongPasswordPattern,
         patternMessage: passwordStrengthMessage
@@ -32,9 +32,7 @@ const logoutValidator = validate([
 
 const oauthCallbackValidator = validate([
     { field: 'provider', required: true, oneOf: ['google', 'facebook', 'github'] },
-    { field: 'providerUserId', required: true, minLength: 2 },
-    { field: 'email', required: true, type: 'email' },
-    { field: 'username', required: true, minLength: 2 }
+    { field: 'token', required: true, minLength: 10 }
 ]);
 
 module.exports = {

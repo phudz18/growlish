@@ -1,4 +1,7 @@
 const AuthService = require('../services/auth.service');
+const { verifyGoogleToken } = require('../services/google.service');
+const { verifyFacebookToken } = require('../services/facebook.service');
+const { verifyGithubToken } = require('../services/github.service');
 
 const badRequest = (res, message, details) => {
     return res.status(400).json({
@@ -168,25 +171,40 @@ const AuthController = {
     oauthCallback: async (req, res, next) => {
         try {
             const body = req.body || {};
-            const { provider, providerUserId, email, username, accessToken, refreshToken } = body;
+            const { provider, token, accessToken, refreshToken } = body;
 
-            if (!provider || !providerUserId || !email || !username) {
+            if (!provider || !token) {
                 return badRequest(
                     res,
                     'Missing OAuth callback data',
                     {
-                        required: ['provider', 'providerUserId', 'email', 'username'],
+                        required: ['provider', 'token'],
                         receivedContentType: req.headers['content-type'] || null
                     }
                 );
             }
 
+            let profile;
+            try {
+                if (provider === 'google') {
+                    profile = await verifyGoogleToken(token);
+                } else if (provider === 'facebook') {
+                    profile = await verifyFacebookToken(token);
+                } else if (provider === 'github') {
+                    profile = await verifyGithubToken(token);
+                } else {
+                    return res.status(400).json({ message: 'Unsupported provider' });
+                }
+            } catch (err) {
+                return res.status(401).json({ message: 'Invalid or expired token from provider', details: err.message });
+            }
+
             const result = await AuthService.loginWithOAuthProfile({
                 provider,
-                providerUserId,
-                email,
-                username,
-                accessToken,
+                providerUserId: profile.providerId,
+                email: profile.email,
+                username: profile.name || profile.email.split('@')[0],
+                accessToken: accessToken || token, 
                 refreshToken
             });
 
@@ -199,6 +217,9 @@ const AuthController = {
                 }
             });
         } catch (err) {
+            if (err.statusCode) {
+                return res.status(err.statusCode).json({ message: err.message });
+            }
             next(err);
         }
     }

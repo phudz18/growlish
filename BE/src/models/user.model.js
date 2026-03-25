@@ -11,12 +11,22 @@ const User = {
         return rows[0];
     },
 
-    create: async (userData, connection) => {
+    createUser: async (userData, connection) => {
         const { username, email, password_hash } = userData;
         const [result] = await connection.query(
-            'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
-            [username, email, password_hash]
+            'INSERT INTO users (username, email, password_hash, email_verified) VALUES (?, ?, ?, ?)',
+            [username, email, password_hash, 0]
         );
+        return result.insertId;
+    },
+
+    createOAuthUser: async ({ username, email }, connection) => {
+        const [result] = await connection.query(
+            `INSERT INTO users (username, email, password_hash, email_verified)
+             VALUES (?, ?, ?, ?)`,
+            [username, email, '', 1] 
+        );
+
         return result.insertId;
     },
 
